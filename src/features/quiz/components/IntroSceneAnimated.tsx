@@ -11,11 +11,13 @@ type IntroPhase = "zoom" | "selection" | "zooming-in";
 const introConfig = {
   initialZoom: { scale: 1.3, duration: 2.5 },
   questionDelay: 2.5,
-  mindPlungeDuration: 2.0,
-  boy: { zoom: 4.0, x: 700, y: -120 },
-  girl: { zoom: 4.0, x: -700, y: -120 },
-  boyMobile: { zoom: 3.5, x: 360, y: -100 },
-  girlMobile: { zoom: 3.5, x: -360, y: -100 },
+  mindPlungeDuration: 2.5,   // total zoom duration
+  // Desktop focal points (boy left, girl right in the image)
+  boy:       { zoom: 4.0, x:  700, y: -120 },
+  girl:      { zoom: 4.0, x: -700, y: -120 },
+  // Mobile focal points
+  boyMobile: { zoom: 3.5, x:  360, y: -100 },
+  girlMobile:{ zoom: 3.5, x: -360, y: -100 },
 };
 
 export function IntroClient() {
@@ -26,40 +28,42 @@ export function IntroClient() {
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
 
   useEffect(() => {
-    const checkMobile = () => setIsMobile(window.innerWidth < 768);
-    checkMobile();
-    window.addEventListener("resize", checkMobile);
-    return () => window.removeEventListener("resize", checkMobile);
+    const check = () => setIsMobile(window.innerWidth < 768);
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
   }, []);
 
   useEffect(() => {
     const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
     setPrefersReducedMotion(mq.matches);
-    const handler = () => setPrefersReducedMotion(mq.matches);
-    mq.addEventListener("change", handler);
-    return () => mq.removeEventListener("change", handler);
+    const h = () => setPrefersReducedMotion(mq.matches);
+    mq.addEventListener("change", h);
+    return () => mq.removeEventListener("change", h);
   }, []);
 
   useEffect(() => {
     if (prefersReducedMotion) { setPhase("selection"); return; }
-    const timer = setTimeout(() => setPhase("selection"), introConfig.questionDelay * 1000);
-    return () => clearTimeout(timer);
+    const t = setTimeout(() => setPhase("selection"), introConfig.questionDelay * 1000);
+    return () => clearTimeout(t);
   }, [prefersReducedMotion]);
 
   const handleSelectGender = useCallback((gender: Gender) => {
     setSelectedGender(gender);
-    setPhase("zooming-in");
     localStorage.setItem("gender", gender);
+    // Small delay so the checkmark shows before zoom starts
     setTimeout(() => {
-      router.push(`/quiz?gender=${gender}`);
-    }, introConfig.mindPlungeDuration * 1000);
+      setPhase("zooming-in");
+      // Navigate after the full zoom
+      setTimeout(() => router.push(`/quiz?gender=${gender}`), introConfig.mindPlungeDuration * 1000);
+    }, 200);
   }, [router]);
 
-  const getMindPlungeAnim = () => {
-    if (!selectedGender) return {};
+  const getMindPlungeAnim = (gender: Gender | null) => {
+    if (!gender) return {};
     const cfg = isMobile
-      ? (selectedGender === "boy" ? introConfig.boyMobile : introConfig.girlMobile)
-      : (selectedGender === "boy" ? introConfig.boy : introConfig.girl);
+      ? (gender === "boy" ? introConfig.boyMobile : introConfig.girlMobile)
+      : (gender === "boy" ? introConfig.boy : introConfig.girl);
     return { scale: cfg.zoom, x: cfg.x, y: cfg.y };
   };
 
@@ -69,9 +73,14 @@ export function IntroClient() {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
     >
-      {/* Background image */}
+      {/* Background image with zoom animation */}
       {!prefersReducedMotion ? (
-        <motion.div className="absolute inset-0 overflow-hidden" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 1 }}>
+        <motion.div
+          className="absolute inset-0 overflow-hidden"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 1 }}
+        >
           <motion.img
             src={isMobile ? heroImageMobile : heroImage}
             alt="Children walking"
@@ -79,10 +88,18 @@ export function IntroClient() {
             fetchPriority="high"
             className="absolute inset-0 w-full h-full object-cover brightness-90"
             initial={{ scale: 1 }}
-            animate={phase === "zooming-in" ? getMindPlungeAnim() : { scale: introConfig.initialZoom.scale }}
+            animate={
+              phase === "zooming-in"
+                ? getMindPlungeAnim(selectedGender)
+                : { scale: introConfig.initialZoom.scale }
+            }
             transition={
               phase === "zooming-in"
-                ? { scale: { duration: introConfig.mindPlungeDuration, ease: "easeIn" }, x: { duration: introConfig.mindPlungeDuration, ease: "easeIn" }, y: { duration: introConfig.mindPlungeDuration, ease: "easeIn" } }
+                ? {
+                    scale: { duration: introConfig.mindPlungeDuration, ease: [0.25, 0.1, 0.25, 1] },
+                    x:     { duration: introConfig.mindPlungeDuration, ease: [0.25, 0.1, 0.25, 1] },
+                    y:     { duration: introConfig.mindPlungeDuration, ease: [0.25, 0.1, 0.25, 1] },
+                  }
                 : { scale: { duration: introConfig.initialZoom.duration, ease: "easeInOut" } }
             }
           />
@@ -96,18 +113,18 @@ export function IntroClient() {
         <div className="absolute inset-0 bg-gradient-to-br from-[#0d0d16] via-[#1a1a2e] to-[#0d0d16]" />
       )}
 
-      {/* Dark overlay */}
+      {/* Bottom gradient for readability */}
       <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none" />
 
-      {/* Gender selection overlay */}
+      {/* Gender selection — disappears when zoom starts */}
       <AnimatePresence>
         {phase === "selection" && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.6 }}
-            className="absolute inset-0 z-20 flex flex-col items-end justify-center px-6 pb-16"
+            transition={{ duration: 0.5 }}
+            className="absolute inset-0 z-20 flex flex-col items-center justify-center px-6"
           >
             <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px]" />
             <div className="relative z-10 text-center w-full max-w-sm mx-auto">
@@ -167,13 +184,17 @@ export function IntroClient() {
         )}
       </AnimatePresence>
 
-      {/* Black overlay for mind-plunge transition */}
+      {/* Black fade at END of zoom (not beginning) */}
       <AnimatePresence>
         {phase === "zooming-in" && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ duration: 0.5, delay: 0.5 }}
+            transition={{
+              duration: 0.6,
+              // Start fading to black only at 70% of the zoom duration
+              delay: introConfig.mindPlungeDuration * 0.7,
+            }}
             className="absolute inset-0 bg-black z-30"
           />
         )}
