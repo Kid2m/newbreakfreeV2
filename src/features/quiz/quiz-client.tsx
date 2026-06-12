@@ -93,7 +93,15 @@ export function QuizClient() {
   );
   const [currentQuoteBreakIndex, setCurrentQuoteBreakIndex] = useState(0);
   const [pendingChapter, setPendingChapter] = useState<string | null>(null);
-  const gender = (searchParams.get("gender") as "male" | "female" | null) ?? null;
+  const [animationIndex, setAnimationIndex] = useState(0);
+  // Save gender from URL to localStorage for AnimatedBreakScreen
+  useEffect(() => {
+    const g = searchParams.get("gender");
+    if (g === "boy" || g === "girl") localStorage.setItem("gender", g);
+    // also accept male/female from v1 compat
+    else if (g === "male") localStorage.setItem("gender", "boy");
+    else if (g === "female") localStorage.setItem("gender", "girl");
+  }, [searchParams]);
   const [_hasPaid] = useState(() => {
     if (typeof window === "undefined") return false;
     const sessionId = new URLSearchParams(window.location.search).get("session_id");
@@ -132,6 +140,9 @@ export function QuizClient() {
 
       // Chapter transition → show animated break then quote break
       if (nextChapter && nextChapter.id !== currentChapter?.id) {
+        const chapterOrder = ["past", "patterns", "healing", "future"];
+        const idx = chapterOrder.indexOf(nextChapter.id);
+        setAnimationIndex(idx >= 0 ? idx : 0);
         setCurrentQuestionIndex(nextIndex);
         setPendingChapter(nextChapter.id);
         setState("chapter-animation");
@@ -181,8 +192,7 @@ export function QuizClient() {
     case "chapter-animation":
       return (
         <AnimatedBreakScreen
-          chapter={pendingChapter ?? "patterns"}
-          gender={gender}
+          animationIndex={animationIndex}
           onComplete={() => {
             const breakScreen = breakScreens.find((b) => b.chapter === pendingChapter);
             if (breakScreen) {
