@@ -3,14 +3,13 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { trackViewContent } from '@/lib/meta-client';
 
-// Import diverse profile images - these should NOT overlap with TestimonialsPage images
-const lisaImage = '/images/quiz/professional_woman_s_d4fbbe22.jpg';
-const annaImage = '/images/quiz/young_woman_casual_s_b2572404.jpg';
-const rachelImage = '/images/quiz/young_woman_casual_s_cb2bd61f.jpg';
-const jamesImage = '/images/quiz/professional_black_m_06705ed8.jpg';
-const michaelImage = '/images/quiz/young_man_casual_sel_cfbef95c.jpg';
-const emilyImage = '/images/quiz/young_woman_smiling__c268d950.jpg';
-const davidImage = '/images/quiz/young_man_casual_sel_fecd2253.jpg';
+const lisaImage = '/images/quiz/pexels-golnar-sabzpoush-rashidi-1317651-2530383_1761954713139.jpg';
+const annaImage = '/images/quiz/pexels-golnar-sabzpoush-rashidi-1317651-2530383_1761955132756.jpg';
+const rachelImage = '/images/quiz/pexels-golnar-sabzpoush-rashidi-1317651-2530383_1761955317513.jpg';
+const jamesImage = '/images/quiz/pexels-andre-furtado-43594-1263986_1761942239297.jpg';
+const michaelImage = '/images/quiz/pexels-stefanstefancik-91227_1761959722987.jpg';
+const emilyImage = '/images/quiz/pexels-clement-proust-363898785-18378690_1761959674401.jpg';
+const davidImage = '/images/quiz/pexels-pixabay-247851_1761942102191.jpg';
 
 interface LoadingPageProps {
   onComplete: () => void;

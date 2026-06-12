@@ -11,6 +11,7 @@ import LoadingPage from "./components/LoadingPage";
 import DonationPage from "./components/DonationPage";
 import ResultsPage from "./components/ResultsPage";
 import BreakScreenComponent from "./components/BreakScreen";
+import AnimatedBreakScreen from "./components/AnimatedBreakScreen";
 import TraumaPatterns from "./components/TraumaPatterns";
 import BenefitsPage from "./components/BenefitsPage";
 import SevenDaysPage from "./components/SevenDaysPage";
@@ -23,6 +24,7 @@ import FAQPage from "./components/FAQPage";
 type QuizState =
   | "quiz"
   | "quote-break"
+  | "chapter-animation"
   | "contact"
   | "loading"
   | "donation"
@@ -90,6 +92,8 @@ export function QuizClient() {
     typeof window !== "undefined" ? (localStorage.getItem("userEmail") ?? "") : ""
   );
   const [currentQuoteBreakIndex, setCurrentQuoteBreakIndex] = useState(0);
+  const [pendingChapter, setPendingChapter] = useState<string | null>(null);
+  const gender = (searchParams.get("gender") as "male" | "female" | null) ?? null;
   const [_hasPaid] = useState(() => {
     if (typeof window === "undefined") return false;
     const sessionId = new URLSearchParams(window.location.search).get("session_id");
@@ -126,15 +130,12 @@ export function QuizClient() {
       const nextQuestion = questions[nextIndex];
       const nextChapter = chapters.find((c) => c.id === nextQuestion?.chapter);
 
-      // Chapter transition → show break screen
+      // Chapter transition → show animated break then quote break
       if (nextChapter && nextChapter.id !== currentChapter?.id) {
-        const breakScreen = breakScreens.find((b) => b.chapter === nextChapter.id);
-        if (breakScreen) {
-          setCurrentQuoteBreakIndex(breakScreens.indexOf(breakScreen));
-          setState("quote-break");
-          setCurrentQuestionIndex(nextIndex);
-          return;
-        }
+        setCurrentQuestionIndex(nextIndex);
+        setPendingChapter(nextChapter.id);
+        setState("chapter-animation");
+        return;
       }
 
       setCurrentQuestionIndex(nextIndex);
@@ -176,6 +177,24 @@ export function QuizClient() {
           />
         </div>
       ) : null;
+
+    case "chapter-animation":
+      return (
+        <AnimatedBreakScreen
+          chapter={pendingChapter ?? "patterns"}
+          gender={gender}
+          onComplete={() => {
+            const breakScreen = breakScreens.find((b) => b.chapter === pendingChapter);
+            if (breakScreen) {
+              setCurrentQuoteBreakIndex(breakScreens.indexOf(breakScreen));
+              setState("quote-break");
+            } else {
+              setState("quiz");
+            }
+            setPendingChapter(null);
+          }}
+        />
+      );
 
     case "quote-break":
       return (
