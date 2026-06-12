@@ -1,89 +1,68 @@
+"use client";
+
 import { useRouter } from 'next/navigation';
-// Optimized WebP images (90%+ smaller)
-const logoImage = '/images/quiz/ChatGPT Image 23 oct. 2025, 11_10_54_1761938952913.webp';
-const freedomImage = '/images/quiz/pexels-andre-furtado-43594-1263986_1761942239297.webp';
+import { Sparkles, ArrowRight, Star, Shield, Users } from 'lucide-react';
 
 export default function LandingPage() {
   const router = useRouter();
 
-  const handleStartQuiz = () => {
-    router.push('/intro');
-  };
-
   return (
-    <div className="min-h-screen bg-[#0d0d16] flex flex-col items-center justify-center text-center p-8">
-      {/* Logo - absolute positioned top-left */}
-      <div className="absolute top-6 left-6 flex items-center gap-2 font-medium text-base text-white opacity-90">
-        <img
-          src={logoImage}
-          alt="BreakFree Logo"
-          className="w-[26px] h-[26px]"
-          loading="eager"
-          decoding="async"
-          width="26"
-          height="26"
-        />
-        <span>BreakFree</span>
-      </div>
+    <div className="min-h-screen bg-[#0d0d16] flex flex-col items-center justify-center text-center px-6 py-12">
+      <div className="max-w-[400px] flex flex-col items-center gap-6">
+        <div className="flex items-center gap-2 text-[#54d3bb] text-sm font-medium">
+          <Sparkles className="w-4 h-4" />
+          <span>3-minute self-discovery quiz</span>
+        </div>
 
-      {/* Main Content Container */}
-      <div className="max-w-[600px] flex flex-col items-center gap-5">
-        {/* Illustration */}
-        <img
-          src={freedomImage}
-          alt="Hands breaking free from chains"
-          className="w-40 h-40 object-cover mb-4 rounded-full"
-          style={{ filter: 'drop-shadow(0 0 8px rgba(255, 255, 255, 0.05))' }}
-          loading="eager"
-          decoding="async"
-          fetchPriority="high"
-          width="160"
-          height="160"
-        />
-
-        {/* Headline */}
-        <h1 className="text-[1.9rem] leading-[1.3] font-semibold text-white w-full">
-          Break free from childhood trauma
+        <h1 className="text-[1.75rem] sm:text-[2rem] leading-[1.3] font-semibold text-white">
+          Your present is{' '}
+          <span className="relative inline-block">
+            <span className="relative z-10">heavily shaped</span>
+            <span
+              className="absolute inset-0 bg-[#54d3bb]/20 rounded-md -mx-1 px-1"
+              style={{ top: '2px', bottom: '2px' }}
+            />
+          </span>{' '}
+          by your past
         </h1>
-        
-        {/* Subheadline */}
-        <p className="text-base text-white font-normal leading-[1.6] max-w-[420px] italic">
-          Uncover your trauma score and learn how to move forward with confidence
+
+        <p className="text-base text-gray-300 leading-[1.7]">
+          Discover the hidden childhood patterns still influencing your relationships, decisions, and emotional well-being today.
         </p>
 
-        {/* CTA Button */}
-        <button 
-          onClick={handleStartQuiz}
-          className="w-full bg-[#54d3bb] text-white border-none rounded-full px-[42px] py-[14px] text-[1.05rem] font-semibold cursor-pointer mt-4 transition-all duration-[250ms] ease-in-out hover:translate-y-[-2px] hover:scale-[1.03] hover:bg-[#6ee7b7]"
-          style={{ 
-            boxShadow: '0 4px 16px rgba(84, 211, 187, 0.3)'
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.boxShadow = '0 6px 20px rgba(110, 231, 183, 0.35)';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.boxShadow = '0 4px 16px rgba(84, 211, 187, 0.3)';
-          }}
-          data-testid="button-start"
+        <p className="text-sm text-gray-400 italic">
+          What's holding you back? Let's find out.
+        </p>
+
+        <button
+          onClick={() => router.push('/intro')}
+          className="w-full bg-[#54d3bb] text-[#0d0d16] border-none rounded-full px-8 py-4 text-base font-semibold cursor-pointer mt-4 flex items-center justify-center gap-2 transition-all duration-[250ms] ease-in-out hover:translate-y-[-2px] hover:scale-[1.02] hover:bg-[#6ee7b7]"
+          style={{ boxShadow: '0 4px 16px rgba(84, 211, 187, 0.3)' }}
+          data-testid="button-start-quiz"
         >
-          Take test
+          Start The Quiz
+          <ArrowRight className="w-4 h-4" />
         </button>
 
-        {/* Footer */}
-        <footer className="mt-12 text-center">
-          <p className="text-sm text-gray-400 mb-2">
-            2025 © All Rights Reserved.
-          </p>
-          <div className="flex flex-wrap justify-center gap-2 text-sm text-gray-400">
-            <a href="#" className="hover:text-white transition-colors">Terms of Service</a>
-            <span>|</span>
-            <a href="#" className="hover:text-white transition-colors">Privacy Policy</a>
-            <span>|</span>
-            <a href="#" className="hover:text-white transition-colors">Subscription Terms</a>
-            <span>|</span>
-            <a href="#" className="hover:text-white transition-colors">Cookie Policy</a>
+        <div className="flex flex-col items-center gap-4 mt-6">
+          <div className="flex items-center gap-1">
+            {[...Array(5)].map((_, i) => (
+              <Star key={i} className="w-4 h-4 fill-[#fbbf24] text-[#fbbf24]" />
+            ))}
+            <span className="text-sm text-gray-400 ml-2">4.9/5 from 2,400+ reviews</span>
           </div>
-        </footer>
+
+          <div className="flex flex-wrap justify-center gap-4 text-xs text-gray-500">
+            <div className="flex items-center gap-1.5">
+              <Users className="w-3.5 h-3.5" />
+              <span>127K+ people helped</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <Shield className="w-3.5 h-3.5" />
+              <span>100% confidential</span>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
