@@ -53,7 +53,7 @@ export default function HomePage() {
 
         {/* CTA */}
         <Link
-          href="/quiz"
+          href="/intro"
           className="mt-4 w-full rounded-full px-[42px] py-[14px] text-[1.05rem] font-semibold text-white transition-all duration-[250ms] ease-in-out hover:-translate-y-0.5 hover:scale-[1.03]"
           style={{
             background: "#54d3bb",

@@ -37,7 +37,7 @@ export default function AnimatedBreakScreen({ animationIndex, onComplete }: Anim
 
     if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
 
-    const timings = [400, 400, 400];
+    const timings = [900, 900, 900];
     const timers: ReturnType<typeof setTimeout>[] = [];
     let acc = 0;
 
@@ -71,7 +71,7 @@ export default function AnimatedBreakScreen({ animationIndex, onComplete }: Anim
               key={i}
               src={src}
               alt=""
-              className={`absolute inset-0 w-full h-full object-cover rounded-2xl transition-opacity duration-100 ${
+              className={`absolute inset-0 w-full h-full object-cover rounded-2xl transition-opacity duration-500 ${
                 currentImageIndex === i ? "opacity-100" : "opacity-0"
               }`}
             />
