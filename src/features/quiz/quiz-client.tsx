@@ -10,8 +10,8 @@ import ContactForm from "./components/ContactForm";
 import LoadingPage from "./components/LoadingPage";
 import DonationPage from "./components/DonationPage";
 import ResultsPage from "./components/ResultsPage";
-import BreakScreenComponent from "./components/BreakScreen";
 import AnimatedBreakScreen from "./components/AnimatedBreakScreen";
+import BreakScreenComponent from "./components/BreakScreen";
 import TraumaPatterns from "./components/TraumaPatterns";
 import BenefitsPage from "./components/BenefitsPage";
 import SevenDaysPage from "./components/SevenDaysPage";
@@ -20,49 +20,31 @@ import TrustPage from "./components/TrustPage";
 import TestimonialsPage from "./components/TestimonialsPage";
 import TrialTimeline from "./components/TrialTimeline";
 import FAQPage from "./components/FAQPage";
+import UpsellPage from "./components/UpsellPage";
+import MasterclassBundlePage from "./components/MasterclassBundlePage";
+import HealingJournalPage from "./components/HealingJournalPage";
 
 type QuizState =
-  | "quiz"
-  | "quote-break"
-  | "chapter-animation"
-  | "contact"
-  | "loading"
-  | "donation"
-  | "checkout"
-  | "results"
-  | "patterns"
-  | "benefits"
+  | "quiz" | "animation" | "quote-break"
+  | "contact" | "loading"
+  | "trust" | "benefits" | "donation" | "results" | "timeline"
+  | "patterns" | "testimonials" | "plan-help"
   | "seven-days"
-  | "plan-help"
-  | "trust"
-  | "testimonials"
-  | "timeline"
-  | "faq";
+  | "upsell" | "masterclass" | "journal"
+  | "faq" | "checkout";
 
 type QuizAnswers = Record<string, string[]>;
 
-const VALID_STATES: QuizState[] = [
-  "quiz", "quote-break", "contact", "loading", "donation",
-  "checkout", "results", "patterns", "benefits", "seven-days",
-  "plan-help", "trust", "testimonials", "timeline", "faq",
-];
+// Animation triggers at question indices 2, 6, 9 (last q of each chapter)
+// mapping questionIndex → animationIndex (0-3)
+const ANIMATION_TRIGGERS: Record<number, number> = { 2: 0, 6: 1, 9: 2, 11: 3 };
 
-const PAGE_NAMES: Partial<Record<QuizState, string>> = {
-  quiz: "Step 01 - Quiz Start",
-  contact: "Step 02 - Contact Form",
-  loading: "Step 03 - Loading Analysis",
-  patterns: "Step 04 - Trauma Patterns",
-  donation: "Step 05 - Donation",
-  results: "Step 06 - Results",
-  benefits: "Step 07 - Benefits",
-  "seven-days": "Step 08 - Seven Days Preview",
-  "plan-help": "Step 09 - Plan Help",
-  trust: "Step 10 - Trust & Stats",
-  testimonials: "Step 11 - Testimonials",
-  timeline: "Step 12 - Trial Timeline",
-  faq: "Step 13 - FAQ",
-  checkout: "Step 14 - Subscription Checkout",
-};
+const VALID_STATES = [
+  "quiz", "animation", "quote-break", "contact", "loading",
+  "trust", "benefits", "donation", "results", "timeline",
+  "patterns", "testimonials", "plan-help", "seven-days",
+  "upsell", "masterclass", "journal", "faq", "checkout",
+] as const;
 
 export function QuizClient() {
   const searchParams = useSearchParams();
@@ -88,204 +70,266 @@ export function QuizClient() {
   const [userName, setUserName] = useState(() =>
     typeof window !== "undefined" ? (localStorage.getItem("userName") ?? "") : ""
   );
-  const [, setUserEmail] = useState(() =>
+  const [userEmail, setUserEmail] = useState(() =>
     typeof window !== "undefined" ? (localStorage.getItem("userEmail") ?? "") : ""
   );
+  const [currentAnimationIndex, setCurrentAnimationIndex] = useState(0);
   const [currentQuoteBreakIndex, setCurrentQuoteBreakIndex] = useState(0);
-  const [pendingChapter, setPendingChapter] = useState<string | null>(null);
-  const [animationIndex, setAnimationIndex] = useState(0);
-  // Save gender from URL to localStorage for AnimatedBreakScreen
+
+  // Save gender from URL to localStorage
   useEffect(() => {
     const g = searchParams.get("gender");
     if (g === "boy" || g === "girl") localStorage.setItem("gender", g);
-    // also accept male/female from v1 compat
     else if (g === "male") localStorage.setItem("gender", "boy");
     else if (g === "female") localStorage.setItem("gender", "girl");
   }, [searchParams]);
-  const [_hasPaid] = useState(() => {
-    if (typeof window === "undefined") return false;
-    const sessionId = new URLSearchParams(window.location.search).get("session_id");
-    const stored = localStorage.getItem("hasPaid") === "true";
-    if (sessionId || stored) { localStorage.setItem("hasPaid", "true"); return true; }
-    return false;
-  });
 
-  const currentQuestion = questions[currentQuestionIndex];
-  const currentChapter = chapters.find((c) => c.id === currentQuestion?.chapter);
+  // Clean up session_id from URL after Stripe return
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.has("session_id")) {
+      params.delete("session_id");
+      const newUrl = params.toString()
+        ? `${window.location.pathname}?${params.toString()}`
+        : window.location.pathname;
+      window.history.replaceState({}, "", newUrl);
+    }
+  }, []);
+
+  // Scroll to top on state/question change
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "instant" });
+  }, [state, currentQuestionIndex]);
+
+  const trackedStates = useRef(new Set<string>());
+  useEffect(() => {
+    if (trackedStates.current.has(state)) return;
+    trackedStates.current.add(state);
+    void trackAndSend("ViewContent", { content_type: `Quiz - ${state}` });
+  }, [state]);
 
   useEffect(() => {
     localStorage.setItem("quizAnswers", JSON.stringify(answers));
   }, [answers]);
 
-  // Track ViewContent once per state
-  const trackedStates = useRef(new Set<string>());
-  useEffect(() => {
-    if (trackedStates.current.has(state)) return;
-    trackedStates.current.add(state);
-    const contentName = PAGE_NAMES[state];
-    if (contentName) {
-      void trackAndSend("ViewContent", { content_type: contentName });
-    }
-  }, [state]);
-
   const handleAnswer = useCallback((questionId: string, answer: string[]) => {
-    setAnswers((prev: QuizAnswers) => ({ ...prev, [questionId]: answer }));
+    setAnswers((prev) => ({ ...prev, [questionId]: answer }));
   }, []);
 
-  const handleNextQuestion = useCallback(() => {
-    if (currentQuestionIndex < questions.length - 1) {
-      const nextIndex = currentQuestionIndex + 1;
-      const nextQuestion = questions[nextIndex];
-      const nextChapter = chapters.find((c) => c.id === nextQuestion?.chapter);
-
-      // Chapter transition → show animated break then quote break
-      if (nextChapter && nextChapter.id !== currentChapter?.id) {
-        const chapterOrder = ["past", "patterns", "healing", "future"];
-        const idx = chapterOrder.indexOf(nextChapter.id);
-        setAnimationIndex(idx >= 0 ? idx : 0);
-        setCurrentQuestionIndex(nextIndex);
-        setPendingChapter(nextChapter.id);
-        setState("chapter-animation");
-        return;
-      }
-
-      setCurrentQuestionIndex(nextIndex);
+  const handleNext = useCallback(() => {
+    const animIdx = ANIMATION_TRIGGERS[currentQuestionIndex];
+    if (animIdx !== undefined) {
+      // Chapter transition: animation → quote-break → next question (or seven-days if last)
+      setCurrentAnimationIndex(animIdx);
+      setCurrentQuoteBreakIndex(animIdx);
+      setState("animation");
+    } else if (currentQuestionIndex < questions.length - 1) {
+      setCurrentQuestionIndex((i) => i + 1);
     } else {
       setState("contact");
     }
-  }, [currentQuestionIndex, currentChapter]);
+  }, [currentQuestionIndex]);
 
-  const handleContactSubmit = useCallback(
-    ({ name, email }: { name: string; email: string }) => {
-      setUserName(name);
-      setUserEmail(email);
-      localStorage.setItem("userName", name);
-      localStorage.setItem("userEmail", email);
-      void trackAndSend("CompleteRegistration", { email });
-      setState("loading");
-    },
-    []
-  );
+  const handleAnimationComplete = useCallback(() => {
+    setState("quote-break");
+  }, []);
 
-  switch (state) {
-    case "quiz":
-      return currentQuestion ? (
-        <div className="bg-background min-h-screen">
-          <ProgressBar
-            currentChapter={currentChapter?.id ?? ""}
-            currentQuestionIndex={currentQuestionIndex}
-            totalQuestions={questions.length}
-          />
-          <QuestionCard
-            question={currentQuestion}
-            chapterTitle={currentChapter?.title ?? ""}
-            savedAnswer={answers[currentQuestion.id] ?? []}
-            onAnswer={(ans: string[]) => handleAnswer(currentQuestion.id, ans)}
-            onNext={handleNextQuestion}
-            canGoBack={currentQuestionIndex > 0}
-            isLastQuestion={currentQuestionIndex === questions.length - 1}
-            onPrevious={() => setCurrentQuestionIndex((i) => Math.max(0, i - 1))}
-          />
-        </div>
-      ) : null;
+  const handleQuoteBreakContinue = useCallback(() => {
+    if (currentQuestionIndex < questions.length - 1) {
+      setCurrentQuestionIndex((i) => i + 1);
+      setState("quiz");
+    } else {
+      // After last question animation → seven-days before contact
+      setState("seven-days");
+    }
+  }, [currentQuestionIndex]);
 
-    case "chapter-animation":
-      return (
-        <AnimatedBreakScreen
-          animationIndex={animationIndex}
-          onComplete={() => {
-            const breakScreen = breakScreens.find((b) => b.chapter === pendingChapter);
-            if (breakScreen) {
-              setCurrentQuoteBreakIndex(breakScreens.indexOf(breakScreen));
-              setState("quote-break");
-            } else {
-              setState("quiz");
-            }
-            setPendingChapter(null);
-          }}
-        />
-      );
+  const currentQuestion = questions[currentQuestionIndex];
+  const currentChapter = chapters.find((c) => c.id === currentQuestion?.chapter);
 
-    case "quote-break":
-      return (
-        <BreakScreenComponent
-          breakScreen={breakScreens[currentQuoteBreakIndex]}
-          onContinue={() => setState("quiz")}
-        />
-      );
-
-    case "contact":
-      return <ContactForm onSubmit={handleContactSubmit} />;
-
-    case "loading":
-      return (
-        <LoadingPage
-          onComplete={() => setState("patterns")}
-        />
-      );
-
-    case "patterns":
-      return <TraumaPatterns onContinue={() => setState("donation")} />;
-
-    case "donation":
-      return (
-        <DonationPage
-          userName={userName}
-          onContinue={() => setState("results")}
-        />
-      );
-
-    case "results":
-      return (
-        <ResultsPage
-          userName={userName}
-          answers={answers}
-          onContinue={() => setState("benefits")}
-        />
-      );
-
-    case "benefits":
-      return <BenefitsPage onContinue={() => setState("seven-days")} />;
-
-    case "seven-days":
-      return <SevenDaysPage onContinue={() => setState("plan-help")} />;
-
-    case "plan-help":
-      return <PlanHelpPage onContinue={() => setState("trust")} />;
-
-    case "trust":
-      return <TrustPage onContinue={() => setState("testimonials")} />;
-
-    case "testimonials":
-      return <TestimonialsPage onContinue={() => setState("timeline")} />;
-
-    case "timeline":
-      return (
-        <TrialTimeline
-          onStartTrial={() => {
-            void trackAndSend("InitiateCheckout", { currency: "EUR", value: 1 });
-            setState("faq");
-          }}
-        />
-      );
-
-    case "faq":
-      return (
-        <FAQPage
-          onContinue={() => {
-            setState("checkout");
-          }}
-        />
-      );
-
-    case "checkout":
-      return (
-        <div className="bg-background flex min-h-screen items-center justify-center">
-          <p className="text-muted-foreground">Checkout — coming soon</p>
-        </div>
-      );
-
-    default:
-      return null;
+  // ── STATES ──────────────────────────────────────────────────────────────
+  if (state === "animation") {
+    return (
+      <AnimatedBreakScreen
+        animationIndex={currentAnimationIndex}
+        onComplete={handleAnimationComplete}
+      />
+    );
   }
+
+  if (state === "quote-break") {
+    const breakScreen = breakScreens[currentQuoteBreakIndex];
+    if (!breakScreen) { handleQuoteBreakContinue(); return null; }
+    return (
+      <BreakScreenComponent
+        breakScreen={breakScreen}
+        onContinue={handleQuoteBreakContinue}
+      />
+    );
+  }
+
+  if (state === "seven-days") {
+    return (
+      <>
+        <ProgressBar currentChapter="future" currentQuestionIndex={questions.length - 1} totalQuestions={questions.length} />
+        <SevenDaysPage onContinue={() => setState("contact")} />
+      </>
+    );
+  }
+
+  if (state === "contact") {
+    return (
+      <ContactForm
+        onSubmit={({ name, email }: { name: string; email: string }) => {
+          setUserName(name);
+          setUserEmail(email);
+          localStorage.setItem("userName", name);
+          localStorage.setItem("userEmail", email);
+          void trackAndSend("CompleteRegistration", { email });
+          setState("loading");
+        }}
+      />
+    );
+  }
+
+  if (state === "loading") {
+    return <LoadingPage onComplete={() => setState("trust")} />;
+  }
+
+  if (state === "trust") {
+    return (
+      <>
+        <ProgressBar currentChapter="future" currentQuestionIndex={questions.length - 1} totalQuestions={questions.length} />
+        <TrustPage onContinue={() => setState("benefits")} />
+      </>
+    );
+  }
+
+  if (state === "benefits") {
+    return (
+      <>
+        <ProgressBar currentChapter="future" currentQuestionIndex={questions.length - 1} totalQuestions={questions.length} />
+        <BenefitsPage onContinue={() => setState("donation")} />
+      </>
+    );
+  }
+
+  if (state === "donation") {
+    return (
+      <>
+        <ProgressBar currentChapter="future" currentQuestionIndex={questions.length - 1} totalQuestions={questions.length} />
+        <DonationPage userName={userName} onContinue={() => setState("results")} />
+      </>
+    );
+  }
+
+  if (state === "results") {
+    return (
+      <>
+        <ProgressBar currentChapter="future" currentQuestionIndex={questions.length - 1} totalQuestions={questions.length} />
+        <ResultsPage userName={userName} answers={answers} onContinue={() => setState("timeline")} />
+      </>
+    );
+  }
+
+  if (state === "timeline") {
+    return (
+      <>
+        <ProgressBar currentChapter="future" currentQuestionIndex={questions.length - 1} totalQuestions={questions.length} />
+        <TrialTimeline onStartTrial={() => {
+          void trackAndSend("InitiateCheckout", { currency: "EUR", value: 1 });
+          setState("patterns");
+        }} />
+      </>
+    );
+  }
+
+  if (state === "patterns") {
+    return (
+      <>
+        <ProgressBar currentChapter="future" currentQuestionIndex={questions.length - 1} totalQuestions={questions.length} />
+        <TraumaPatterns onContinue={() => setState("testimonials")} />
+      </>
+    );
+  }
+
+  if (state === "testimonials") {
+    return (
+      <>
+        <ProgressBar currentChapter="future" currentQuestionIndex={questions.length - 1} totalQuestions={questions.length} />
+        <TestimonialsPage onContinue={() => setState("plan-help")} />
+      </>
+    );
+  }
+
+  if (state === "plan-help") {
+    return (
+      <>
+        <ProgressBar currentChapter="future" currentQuestionIndex={questions.length - 1} totalQuestions={questions.length} />
+        <PlanHelpPage onContinue={() => setState("upsell")} />
+      </>
+    );
+  }
+
+  if (state === "upsell") {
+    return <UpsellPage onAccept={() => setState("masterclass")} onSkip={() => setState("masterclass")} />;
+  }
+
+  if (state === "masterclass") {
+    return <MasterclassBundlePage onAccept={() => setState("journal")} onDecline={() => setState("journal")} />;
+  }
+
+  if (state === "journal") {
+    return <HealingJournalPage onAccept={() => setState("faq")} onSkip={() => setState("faq")} />;
+  }
+
+  if (state === "faq") {
+    return (
+      <>
+        <ProgressBar currentChapter="future" currentQuestionIndex={questions.length - 1} totalQuestions={questions.length} />
+        <FAQPage onContinue={() => setState("checkout")} />
+      </>
+    );
+  }
+
+  if (state === "checkout") {
+    return (
+      <div className="bg-background flex min-h-screen items-center justify-center px-4">
+        <div className="text-center max-w-sm">
+          <div className="text-4xl mb-4">💳</div>
+          <h2 className="text-xl font-bold text-foreground mb-2">Stripe Checkout</h2>
+          <p className="text-muted-foreground text-sm mb-6">
+            Stripe price ID needs to be configured in Vercel environment variables.
+          </p>
+          <button
+            onClick={() => setState("upsell")}
+            className="text-sm text-primary underline"
+          >
+            ← Back
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Default: quiz state
+  return currentQuestion ? (
+    <div className="bg-background min-h-screen">
+      <ProgressBar
+        currentChapter={currentChapter?.id ?? ""}
+        currentQuestionIndex={currentQuestionIndex}
+        totalQuestions={questions.length}
+      />
+      <QuestionCard
+        question={currentQuestion}
+        chapterTitle={currentChapter?.title ?? ""}
+        savedAnswer={answers[currentQuestion.id] ?? []}
+        onAnswer={(ans: string[]) => handleAnswer(currentQuestion.id, ans)}
+        onNext={handleNext}
+        canGoBack={currentQuestionIndex > 0}
+        isLastQuestion={currentQuestionIndex === questions.length - 1}
+        onPrevious={() => setCurrentQuestionIndex((i) => Math.max(0, i - 1))}
+      />
+    </div>
+  ) : null;
 }
