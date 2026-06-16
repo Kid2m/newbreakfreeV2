@@ -39,7 +39,7 @@ export default function EmbeddedCheckoutPage({
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         amount: Math.round(amount * 100), email, name, productType, productName,
-        returnUrl: returnUrl ?? `${window.location.origin}/quiz?state=results&payment_success=true`,
+        returnUrl: returnUrl || `${window.location.origin}/quiz?state=results&payment_success=true`,
       }),
     });
     const data = await response.json();
