@@ -7,7 +7,7 @@ import { z } from "zod";
 
 const RequestSchema = z.object({
   amount: z.number().positive(),           // en centimes (ex: 100 = 1€)
-  email: z.string().email().optional(),
+  email: z.string().email().optional().or(z.literal("")),
   name: z.string().optional(),
   productType: z.string().optional(),      // 'trial' | 'donation' | 'upsell'
   productName: z.string().optional(),

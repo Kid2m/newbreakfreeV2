@@ -76,10 +76,13 @@ export function QuizClient() {
   );
   const [currentAnimationIndex, setCurrentAnimationIndex] = useState(0);
   const [currentQuoteBreakIndex, setCurrentQuoteBreakIndex] = useState(0);
-  const [checkoutAmount, setCheckoutAmount] = useState(14.99);
-  const [checkoutType, setCheckoutType] = useState<EmbeddedCheckoutProductType>('upsell');
-  const [checkoutProductName, setCheckoutProductName] = useState('Mental Well-Being Guides');
-  const [checkoutReturnUrl, setCheckoutReturnUrl] = useState('');
+  // Checkout defaults — can be overridden via URL params for direct testing
+  const urlCheckoutType = (searchParams.get("checkoutType") ?? "") as EmbeddedCheckoutProductType;
+  const urlAmount = parseFloat(searchParams.get("amount") ?? "0");
+  const [checkoutAmount, setCheckoutAmount] = useState(urlAmount > 0 ? urlAmount : 1);
+  const [checkoutType, setCheckoutType] = useState<EmbeddedCheckoutProductType>(urlCheckoutType || 'subscription');
+  const [checkoutProductName, setCheckoutProductName] = useState(searchParams.get("productName") ?? '7-Day BreakFree Trial');
+  const [checkoutReturnUrl, setCheckoutReturnUrl] = useState(searchParams.get("returnUrl") ?? '');
 
   // Save gender from URL to localStorage
   useEffect(() => {
