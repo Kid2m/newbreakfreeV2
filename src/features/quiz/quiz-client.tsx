@@ -243,7 +243,11 @@ export function QuizClient() {
         <ProgressBar currentChapter="future" currentQuestionIndex={questions.length - 1} totalQuestions={questions.length} />
         <TrialTimeline onStartTrial={() => {
           void trackAndSend("InitiateCheckout", { currency: "EUR", value: 1 });
-          setState("patterns");
+          setCheckoutAmount(1);
+          setCheckoutType('subscription');
+          setCheckoutProductName('7-Day BreakFree Trial');
+          setCheckoutReturnUrl(`${window.location.origin}/quiz?state=testimonials&payment_success=true`);
+          setState("subscription-checkout");
         }} />
       </>
     );
@@ -325,20 +329,15 @@ export function QuizClient() {
     return (
       <>
         <ProgressBar currentChapter="future" currentQuestionIndex={questions.length - 1} totalQuestions={questions.length} />
-        <FAQPage onContinue={() => {
-          setCheckoutAmount(1);
-          setCheckoutType('subscription');
-          setCheckoutProductName('7-Day BreakFree Trial');
-          setCheckoutReturnUrl(`${typeof window !== 'undefined' ? window.location.origin : ''}/quiz?state=testimonials&payment_success=true`);
-          setState("subscription-checkout");
-        }} />
+        <FAQPage onContinue={() => { window.location.href = '/signup'; }} />
       </>
     );
   }
 
   if (state === "checkout" || state === "subscription-checkout") {
     const onBack = () => {
-      if (checkoutType === 'upsell') setState("upsell");
+      if (checkoutType === 'subscription') setState("timeline");
+      else if (checkoutType === 'upsell') setState("upsell");
       else if (checkoutType === 'masterclass') setState("masterclass");
       else if (checkoutType === 'journal') setState("journal");
       else setState("faq");
