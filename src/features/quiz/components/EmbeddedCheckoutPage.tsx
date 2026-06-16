@@ -30,7 +30,7 @@ export default function EmbeddedCheckoutPage({
 
   useEffect(() => {
     trackViewContent({ contentName: `Checkout - ${productName}` });
-    trackInitiateCheckout({ email, firstName: name, value: amount, currency: 'USD', contentName: productName });
+    trackInitiateCheckout({ value: amount, currency: 'USD' });
   }, [productName, email, name, amount]);
 
   const fetchClientSecret = useCallback(async () => {
