@@ -23,6 +23,7 @@ import FAQPage from "./components/FAQPage";
 import UpsellPage from "./components/UpsellPage";
 import MasterclassBundlePage from "./components/MasterclassBundlePage";
 import HealingJournalPage from "./components/HealingJournalPage";
+import EmbeddedCheckoutPage, { type EmbeddedCheckoutProductType } from "./components/EmbeddedCheckoutPage";
 
 type QuizState =
   | "quiz" | "animation" | "quote-break"
@@ -31,7 +32,7 @@ type QuizState =
   | "patterns" | "testimonials" | "plan-help"
   | "seven-days"
   | "upsell" | "masterclass" | "journal"
-  | "faq" | "checkout";
+  | "faq" | "checkout" | "subscription-checkout";
 
 type QuizAnswers = Record<string, string[]>;
 
@@ -75,6 +76,10 @@ export function QuizClient() {
   );
   const [currentAnimationIndex, setCurrentAnimationIndex] = useState(0);
   const [currentQuoteBreakIndex, setCurrentQuoteBreakIndex] = useState(0);
+  const [checkoutAmount, setCheckoutAmount] = useState(14.99);
+  const [checkoutType, setCheckoutType] = useState<EmbeddedCheckoutProductType>('upsell');
+  const [checkoutProductName, setCheckoutProductName] = useState('Mental Well-Being Guides');
+  const [checkoutReturnUrl, setCheckoutReturnUrl] = useState('');
 
   // Save gender from URL to localStorage
   useEffect(() => {
@@ -272,43 +277,82 @@ export function QuizClient() {
   }
 
   if (state === "upsell") {
-    return <UpsellPage onAccept={() => setState("masterclass")} onSkip={() => setState("masterclass")} />;
+    return (
+      <UpsellPage
+        onAccept={() => {
+          setCheckoutAmount(14.99);
+          setCheckoutType('upsell');
+          setCheckoutProductName('Mental Well-Being Guides');
+          setCheckoutReturnUrl(`${typeof window !== 'undefined' ? window.location.origin : ''}/quiz?state=masterclass&payment_success=true`);
+          setState("checkout");
+        }}
+        onSkip={() => setState("masterclass")}
+      />
+    );
   }
 
   if (state === "masterclass") {
-    return <MasterclassBundlePage onAccept={() => setState("journal")} onDecline={() => setState("journal")} />;
+    return (
+      <MasterclassBundlePage
+        onAccept={() => {
+          setCheckoutAmount(69);
+          setCheckoutType('masterclass');
+          setCheckoutProductName('Masterclass Bundle');
+          setCheckoutReturnUrl(`${typeof window !== 'undefined' ? window.location.origin : ''}/quiz?state=journal&payment_success=true`);
+          setState("checkout");
+        }}
+        onDecline={() => setState("journal")}
+      />
+    );
   }
 
   if (state === "journal") {
-    return <HealingJournalPage onAccept={() => setState("faq")} onSkip={() => setState("faq")} />;
+    return (
+      <HealingJournalPage
+        onAccept={() => {
+          setCheckoutAmount(14.99);
+          setCheckoutType('journal');
+          setCheckoutProductName('Healing Journal');
+          setCheckoutReturnUrl(`${typeof window !== 'undefined' ? window.location.origin : ''}/quiz?state=faq&payment_success=true`);
+          setState("checkout");
+        }}
+        onSkip={() => setState("faq")}
+      />
+    );
   }
 
   if (state === "faq") {
     return (
       <>
         <ProgressBar currentChapter="future" currentQuestionIndex={questions.length - 1} totalQuestions={questions.length} />
-        <FAQPage onContinue={() => setState("checkout")} />
+        <FAQPage onContinue={() => {
+          setCheckoutAmount(1);
+          setCheckoutType('subscription');
+          setCheckoutProductName('7-Day BreakFree Trial');
+          setCheckoutReturnUrl(`${typeof window !== 'undefined' ? window.location.origin : ''}/quiz?state=testimonials&payment_success=true`);
+          setState("subscription-checkout");
+        }} />
       </>
     );
   }
 
-  if (state === "checkout") {
+  if (state === "checkout" || state === "subscription-checkout") {
+    const onBack = () => {
+      if (checkoutType === 'upsell') setState("upsell");
+      else if (checkoutType === 'masterclass') setState("masterclass");
+      else if (checkoutType === 'journal') setState("journal");
+      else setState("faq");
+    };
     return (
-      <div className="bg-background flex min-h-screen items-center justify-center px-4">
-        <div className="text-center max-w-sm">
-          <div className="text-4xl mb-4">💳</div>
-          <h2 className="text-xl font-bold text-foreground mb-2">Stripe Checkout</h2>
-          <p className="text-muted-foreground text-sm mb-6">
-            Stripe price ID needs to be configured in Vercel environment variables.
-          </p>
-          <button
-            onClick={() => setState("upsell")}
-            className="text-sm text-primary underline"
-          >
-            ← Back
-          </button>
-        </div>
-      </div>
+      <EmbeddedCheckoutPage
+        amount={checkoutAmount}
+        productType={checkoutType}
+        productName={checkoutProductName}
+        email={userEmail}
+        name={userName}
+        onBack={onBack}
+        returnUrl={checkoutReturnUrl}
+      />
     );
   }
 
