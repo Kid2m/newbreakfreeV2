@@ -44,7 +44,7 @@ const VALID_STATES = [
   "quiz", "animation", "quote-break", "contact", "loading",
   "trust", "benefits", "donation", "results", "timeline",
   "patterns", "testimonials", "plan-help", "seven-days",
-  "upsell", "masterclass", "journal", "faq", "checkout",
+  "upsell", "masterclass", "journal", "faq", "checkout", "subscription-checkout",
 ] as const;
 
 export function QuizClient() {
